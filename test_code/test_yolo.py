@@ -21,6 +21,8 @@ GPIO.setup(led_in_1, GPIO.OUT) # LED_1
 GPIO.setup(led_in_2, GPIO.OUT) #LED_2
 GPIO.setup(led_in_3, GPIO.OUT) #LED_3
 
+shape_stack = []
+
 def send_signal(shape):
 	if(shape=="circle"):
 		print("here----------2")

@@ -1,0 +1,15 @@
+names:
+- circle
+- rectangle
+- square
+- triangle
+nc: 4
+roboflow:
+  license: CC BY 4.0
+  project: shape-a81tp
+  url: https://universe.roboflow.com/shapeyolov5/shape-a81tp/dataset/9
+  version: 9
+  workspace: shapeyolov5
+test: ../test/images
+train: shape-9/train/images
+val: shape-9/valid/images

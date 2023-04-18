@@ -24,6 +24,9 @@ import torch
 import torch.nn.functional as F
 import torchvision
 import yaml
+
+import cv2
+
 from PIL import ExifTags, Image, ImageOps
 from torch.utils.data import DataLoader, Dataset, dataloader, distributed
 from tqdm import tqdm
@@ -363,7 +366,8 @@ class LoadStreams:
             if s == 0:
                 assert not is_colab(), '--source 0 webcam unsupported on Colab. Rerun command in a local environment.'
                 assert not is_kaggle(), '--source 0 webcam unsupported on Kaggle. Rerun command in a local environment.'
-            cap = cv2.VideoCapture(s)
+            print('s => ',s)
+            cap = cv2.VideoCapture(s,cv2.CAP_V4L)
             assert cap.isOpened(), f'{st}Failed to open {s}'
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -371,7 +375,26 @@ class LoadStreams:
             self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')  # infinite stream fallback
             self.fps[i] = max((fps if math.isfinite(fps) else 0) % 100, 0) or 30  # 30 FPS fallback
 
-            _, self.imgs[i] = cap.read()  # guarantee first frame
+            ret, resized = cap.read()
+            # resized = imutils.resize(frame, width=300)
+            mark_resized = resized.copy()
+            # change bg color
+            hsv=cv2.cvtColor(resized,cv2.COLOR_BGR2HSV)
+
+            # # Define lower and uppper limits of what we call "brown"
+            hsv_low = np.array([0, 0, 67], np.uint8)
+            hsv_high = np.array([179, 255, 255], np.uint8)
+
+            # # Mask image to only select browns
+            mask=cv2.inRange(hsv,hsv_low,hsv_high)
+
+            # # Change image to red where we found brown
+            #mark_resized[mask>0]=(0,0,0)
+            res_mark = cv2.bitwise_and(mark_resized, mark_resized, mask=mask)
+            #
+            gray = cv2.cvtColor(res_mark, cv2.COLOR_BGR2GRAY)
+
+            self.imgs[i] = res_mark  # guarantee first frame
             self.threads[i] = Thread(target=self.update, args=([i, cap, s]), daemon=True)
             LOGGER.info(f'{st} Success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)')
             self.threads[i].start()
@@ -393,8 +416,26 @@ class LoadStreams:
             cap.grab()  # .read() = .grab() followed by .retrieve()
             if n % self.vid_stride == 0:
                 success, im = cap.retrieve()
+                # ret, resized = cap.read()
+                # resized = imutils.resize(frame, width=300)
+                mark_resized = im.copy()
+                # change bg color
+                hsv=cv2.cvtColor(im,cv2.COLOR_BGR2HSV)
+
+                # # Define lower and uppper limits of what we call "brown"
+                hsv_low = np.array([0, 0, 67], np.uint8)
+                hsv_high = np.array([179, 255, 255], np.uint8)
+
+                # # Mask image to only select browns
+                mask=cv2.inRange(hsv,hsv_low,hsv_high)
+
+                # # Change image to red where we found brown
+                #mark_resized[mask>0]=(0,0,0)
+                res_mark = cv2.bitwise_and(mark_resized, mark_resized, mask=mask)
+                #
+                gray = cv2.cvtColor(res_mark, cv2.COLOR_BGR2GRAY)
                 if success:
-                    self.imgs[i] = im
+                    self.imgs[i] = res_mark
                 else:
                     LOGGER.warning('WARNING ⚠️ Video stream unresponsive, please check your IP camera connection.')
                     self.imgs[i] = np.zeros_like(self.imgs[i])
@@ -1219,3 +1260,4 @@ def create_classification_dataloader(path,
                               pin_memory=PIN_MEMORY,
                               worker_init_fn=seed_worker,
                               generator=generator)  # or DataLoader(persistent_workers=True)
+
