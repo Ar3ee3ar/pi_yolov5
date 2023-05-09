@@ -43,6 +43,12 @@ time_start_send_signal = 0
 already_send = False
 prev_cy = 0
 prev_frame = 0
+prev_bottom = 0
+detect = False
+
+initial_flag = False
+prev_initial = 1
+send_shape_temp = ''
 
 #shape_class = ['circle','rectangle','square','triangle']
 
@@ -66,8 +72,8 @@ def send_signal(shape):
 		GPIO.output(led_in_3, GPIO.HIGH)
 	else:
 		GPIO.output(led_in_1, class_signal[shape][0])
-		GPIO.output(led_in_2, class_signal[shape][0])
-		GPIO.output(led_in_3, class_signal[shape][0])
+		GPIO.output(led_in_2, class_signal[shape][1])
+		GPIO.output(led_in_3, class_signal[shape][2])
 		
 file_name = _argparse().file
 file_weight = _argparse().weight
@@ -76,13 +82,15 @@ image_size = _argparse().imgsz
 with open(file_name) as json_file:
     class_signal = json.load(json_file)
     shape_class = list(class_signal.keys())
+    
+shape_count = [0]*len(shape_class)
 		
 #model = torch.hub.load('ultralytics/yolov5','custom',path='best.pt',force_reload=False)
 
 #cap = cv2.VideoCapture('/dev/video0',cv2.CAP_V4L)
 
 #cap.set(cv2.CAP_PROP_FRAME_WIDTH,1000)
-cv2.namedWindow('Screen',cv2.WINDOW_NORMAL)
+#cv2.namedWindow('Screen',cv2.WINDOW_NORMAL)
 #cv2.setWindowProperty('Screen',cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
 
 send_signal('wait')
@@ -130,7 +138,7 @@ bs = len(dataset)
 vid_path, vid_writer = [None] * bs, [None] * bs
 
 # Run inference
-model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
+#model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
 seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
 for path, im, im0s, vid_cap, s in dataset:
     # if(True):
@@ -172,8 +180,8 @@ for path, im, im0s, vid_cap, s in dataset:
     	color = (0, 0, 255)
     	thickness = 2
     	#cv2.line(resized, start_point, end_point, color, thickness)
-    	cv2.line(im0, (70,(int(im0.shape[0]/2)+10)) , ((int(im0.shape[1])-80),(int(im0.shape[0]/2)+10) ), (0, 255, 0), thickness) # green
-    	cv2.line(im0, (70,(int(im0.shape[0]/2)-10)) , ((int(im0.shape[1])-80),(int(im0.shape[0]/2)-10)), (255, 0, 0), thickness) #blue
+    	cv2.line(im0, (150,(int(im0.shape[0]/2)+25)) , ((int(im0.shape[1])-180),(int(im0.shape[0]/2)+25) ), (0, 255, 0), thickness) # green
+    	cv2.line(im0, (150,(int(im0.shape[0]/2)-25)) , ((int(im0.shape[1])-180),(int(im0.shape[0]/2)-25)), (255, 0, 0), thickness) #blue
     	try:
     		#print(result_array)
     		#print (len((results.pandas().xyxy[0]).to_numpy()))
@@ -187,32 +195,52 @@ for path, im, im0s, vid_cap, s in dataset:
     					cx = int(round((result_array[i][0]+result_array[i][2])//2))
     					cy = int(round((result_array[i][1]+result_array[i][3])//2))
     					shape = shape_class[int(result_array[i][5])]
-    					if((cy <= (int((im0.shape[0]/2))+10) and cy >= (int((im0.shape[0]/2))-10)) and (cx>=65 and cx<=(int(im0.shape[1])-75))):
-    						if(((cy!= prev_cy and (cy!=prev_cy+1 and cy!=prev_cy-1)) or prev_cy==0)):
-    							#shape = str(result_array[i][6])
-    							#print(shape,': prev_cy = ',prev_cy,' | cy= ',cy)
-    							#print(result_array[i][4])
-    							shape_stack.append(shape)
-    							#print('prev_cy = ',prev_cy,' | cy= ',cy)
-    							print('stored: ',shape,' => ',shape_stack)
-    							prev_cy = cy
-    						org_text = (int(result_array[i][0]),int(result_array[i][1])-10)
+    					if(int(result_array[i][3]) >= int((im0.shape[0]/2))-25):
+    						prev_bottom = int(result_array[i][3])
+    						if((cy <= (int((im0.shape[0]/2))+25) and cy >= (int((im0.shape[0]/2))-25)) and (cx>=150 and cx<=(int(im0.shape[1])-180)) ):
+    							#print(detect)
+    							if(detect == True):
+    								cv2.circle(im0,(cx,cy),2,(0,255,0),2)
+    								if(False):
+    									detect = False
+    							else:
+    								if(((cy!= prev_cy and (cy!=prev_cy+1 and cy!=prev_cy-1)) or prev_cy==0)):
+    									#shape = str(result_array[i][6])
+    									#print(shape,': prev_cy = ',prev_cy,' | cy= ',cy)
+    									#print(result_array[i][4])
+    									shape_stack.append(shape)
+    									#print('prev_cy = ',prev_cy,' | cy= ',cy)
+    									print('stored: ',shape,' => ',shape_stack)
+    									prev_cy = cy
+    									prev_bottom =int(result_array[i][3])
+    									detect = True
+    									shape_count[shape_class.index(shape)] = shape_count[shape_class.index(shape)] + 1
+    						if( detect == True and int(result_array[i][1]) > (int((im0.shape[0]/2))+25)):
+    							detect = False
+    							
+    							#org_text = (int(result_array[i][0]),int(result_array[i][1])-10)
     					cv2.circle(im0,(cx,cy),2,(255,0,0),2)
+    					#cv2.putText(im0,str(i),(cx,cy),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
     						#cv2.rectangle(resized,top_left,bottom_right,(0,0,255),2)
     						#cv2.putText(resized,str(result_array[i][6])+str(cy),org_text,cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
     		else:
     			print('wait')
-    			send_signal('wait')
+    			#send_signal('wait')
     	except Exception as e: # work on python 3.x
     		print(str(e))
     	im0 = annotator.result()
-    	cv2.imshow('Screen', im0)
+    	cv2.namedWindow('Screen',cv2.WINDOW_NORMAL)
+    	cv2.setWindowProperty('Screen',cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
     	# check if intialize case ---------------
-    	if(GPIO.input(initialize) == 0):
-    		#print('initial')
-    		send_signal('wait') # change to initial
+    	#print(prev_initial == 1 and GPIO.input(initialize) == 0)
+    	if(prev_initial == 1 and GPIO.input(initialize) == 0):
+    		print('initial')
+    		prev_initial = GPIO.input(initialize)
+    		send_signal('initial') # change to initial
     		time_start_send_signal = time()
     		already_send = True
+    		initial_flag = True
+    		cv2.putText(im0,'initial',(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
     	#----------------------------------------------
     	if(GPIO.input(obj_sensor) == 0):
     		#print('obj: ',GPIO.input(obj_sensor),'--------------------')
@@ -227,25 +255,48 @@ for path, im, im0s, vid_cap, s in dataset:
     			send_signal(want_shape)
     			time_start_send_signal = time()
     			already_send = True
+    			send_shape_temp = want_shape
+    			shape_count[shape_class.index(want_shape)] = shape_count[shape_class.index(want_shape)] - 1
+    			cv2.putText(im0,'pick '+send_shape_temp,(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
     		else:
     			print('no shape')
     			send_signal('wait')
     	#print('obj: ',GPIO.input(obj_sensor),'--------------------')
     	#cv2.imshow('mark Screen', res_mark)
     	# control when pi need to stop send signal to robot -----------------------
-    	if(already_send and ((time() - time_start_send_signal) > 5)):
-    		#print('stop send shape signal')
-    		send_signal('wait')
-    		already_send = False
-    		#elif(already_send and ((time() - time_start_send_signal) <= 5)):
-    		#print('still sent')
-    		#if((time() - time_start_send_signal) <= 5):
-    		#print('shape signal')
-    	# -------------------------------------------------------------------
+    	if(initial_flag == True):
+    		#print((time() - time_start_send_signal) )
+    		if(already_send and ((time() - time_start_send_signal) > 5)):
+    			already_send = False
+    			initial_flag = False
+    			send_signal('wait')
+    		elif(already_send and ((time() - time_start_send_signal) <= 5)):
+    			print('still sent initial')
+    			cv2.putText(im0,'sent signal initial',(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
+    	else:
+    		if(already_send and ((time() - time_start_send_signal) > 10)):
+    			print('stop send shape signal')
+    			send_signal('wait')
+    			already_send = False
+    		elif(already_send and ((time() - time_start_send_signal) <= 10)):
+    			print('still sent')
+    			cv2.putText(im0,'pick '+send_shape_temp,(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
+    		
+    	if(cv2.waitKey(1) & 0xFF == ord("c")):
+    		shape_stack = []
+    		print('clear')
+    		cv2.putText(im0,'clear shape list',(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
+    	elif(cv2.waitKey(1) & 0xFF == ord("q")):
+    		exit()
+    	for count_img in range(len(shape_count)):
+    		cv2.putText(im0,str(shape_class[count_img])+': '+str(shape_count[count_img]),(0,int(im0.shape[0])-20-(30*count_img)),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),1,cv2.LINE_AA)
+    	cv2.imshow('Screen', im0)
+    	#-------------------------------------------------------------------
     	#end = time()
     	#sec = end-start
     	#print(sec)
-cv2.waitKey(1)  # 1 millisecond
+#cv2.waitKey(1)  # 1 millisecond
+
 
 #cap.release()
 #cv2.destroyAllWindows()

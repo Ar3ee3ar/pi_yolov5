@@ -53,7 +53,7 @@ def send_signal(shape):
 		GPIO.output(led_in_1, GPIO.HIGH)
 		
 while(True):
-	print(GPIO.input(obj_sensor))
+	print(GPIO.input(initialize))
 		
 		
 

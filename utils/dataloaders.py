@@ -382,7 +382,7 @@ class LoadStreams:
             hsv=cv2.cvtColor(resized,cv2.COLOR_BGR2HSV)
 
             # # Define lower and uppper limits of what we call "brown"
-            hsv_low = np.array([0, 0, 67], np.uint8)
+            hsv_low = np.array([0, 0, 86], np.uint8)
             hsv_high = np.array([179, 255, 255], np.uint8)
 
             # # Mask image to only select browns
@@ -423,7 +423,7 @@ class LoadStreams:
                 hsv=cv2.cvtColor(im,cv2.COLOR_BGR2HSV)
 
                 # # Define lower and uppper limits of what we call "brown"
-                hsv_low = np.array([0, 0, 67], np.uint8)
+                hsv_low = np.array([0, 0, 86], np.uint8)
                 hsv_high = np.array([179, 255, 255], np.uint8)
 
                 # # Mask image to only select browns
