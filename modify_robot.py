@@ -285,6 +285,7 @@ for path, im, im0s, vid_cap, s in dataset:
     	if(cv2.waitKey(1) & 0xFF == ord("c")):
     		shape_stack = []
     		print('clear')
+    		shape_count = [0]*len(shape_class)
     		cv2.putText(im0,'clear shape list',(int(im0.shape[1]/2),int(im0.shape[0])-40),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2,cv2.LINE_AA)
     	elif(cv2.waitKey(1) & 0xFF == ord("q")):
     		exit()
